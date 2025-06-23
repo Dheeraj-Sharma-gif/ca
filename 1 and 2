@@ -1,0 +1,108 @@
+#include <stdio.h>  
+#include <stdlib.h>  
+#include <omp.h>  
+
+#define ARRAY_SIZE 25 
+
+void bubble_sort(int arr[], int n)  
+{  
+    int i, j, temp;
+    for (i = 0; i < n - 1; ++i)  
+    {  
+        for (j = 0; j < n - i - 1; ++j)  
+        {  
+            if (arr[j] > arr[j + 1])  
+            { 
+                temp = arr[j];  
+                arr[j] = arr[j + 1];  
+                arr[j + 1] = temp;  
+            }  
+        }  
+    }  
+}  
+
+int main()  
+{  
+    int arr[ARRAY_SIZE]; 
+    int i;
+
+    #pragma omp parallel for 
+    for (i = 0; i < ARRAY_SIZE; ++i)  
+    {  
+        arr[i] = rand() % 100; 
+    }  
+
+    printf("\nThe array elements are:\n"); 
+    for (i = 0; i < ARRAY_SIZE; i++) 
+        printf("%d  ", arr[i]); 
+
+    #pragma omp parallel shared(arr)  
+    { 
+        #pragma omp single
+        bubble_sort(arr, ARRAY_SIZE);  
+    }  
+
+    printf("\n\nSorted array:\n");  
+    for (i = 0; i < ARRAY_SIZE; ++i)  
+    {  
+        printf("%d   ", arr[i]);  
+    }  
+
+    printf("\n");  
+    return 0; 
+}
+
+#include <stdio.h>  
+#include <omp.h>  
+
+#define ARRAY_SIZE 100  
+#define TARGET 42  
+
+int binary_search(int arr[], int left, int right, int target)  
+{  
+    int mid;
+    while (left <= right)  
+    {  
+        mid = left + (right - left) / 2;           
+        if (arr[mid] == target) return mid;  
+        if (arr[mid] < target)  
+            left = mid + 1;  
+        else  
+            right = mid - 1; 
+    }  
+    return -1;  
+}  
+
+int main()  
+{  
+    int arr[ARRAY_SIZE];  
+    int i, result = -1;  
+
+    for (i = 0; i < ARRAY_SIZE; ++i)  
+    {  
+        arr[i] = i;  
+    }  
+
+    #pragma omp parallel shared(arr, result)  
+    {  
+        int tid = omp_get_thread_num();  
+        int num_threads = omp_get_num_threads();  
+        int chunk_size = ARRAY_SIZE / num_threads;  
+        int left = tid * chunk_size;  
+        int right = (tid == num_threads - 1) ? ARRAY_SIZE - 1 : (tid + 1) * chunk_size - 1;  
+        int local_result = binary_search(arr, left, right, TARGET);  
+
+        #pragma omp critical  
+        {  
+            if (local_result != -1 && result == -1)  
+                result = local_result;  
+        }  
+    }  
+
+    if (result != -1)  
+        printf("Element %d found at index %d.\n", TARGET, result);  
+    else  
+        printf("Element %d not found in the array.\n", TARGET);  
+
+    return 0;  
+}
